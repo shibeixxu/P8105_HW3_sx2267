@@ -1,0 +1,67 @@
+---
+title: "HW3"
+author: "ShibeiXu"
+date: "2021/10/19"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1
+```{r load package,echo=FALSE,include=FALSE}
+devtools::install_github("p8105/p8105.datasets",force = TRUE)
+```
+```{r load instacart data,include=FALSE}
+library(p8105.datasets)
+library(tidyverse)
+library(patchwork)
+library(ggridges)
+data("instacart")
+```
+### Short Description
+there are `r dim(instacart)[2]` variables and `r dim(instacart)[1]` observations in this dataset. It contains details including `user id`: customer identifier, `order id`: order identifier, `product id`: product identifier, `product name`, `reordered` if it is reordered or not. Also, in the local store, there are `r dim(distinct(instacart, department))[1]` departments.
+
+### Answers to question
+1.There are `r dim(distinct(instacart, aisle))[1]` aisles in the store. And among them, "`r (instacart %>% group_by(aisle) %>% summarise(item_sum = n()) %>% arrange(desc(item_sum)))[1,1]`" ordered the most.
+
+2.
+```{r, fig.height=60,fig.width=10}
+instacart %>% 
+  select(aisle) %>% 
+  filter(aisle>10000)%>%
+  ggplot(aes(x = factor(aisle,levels=names(sort(table(aisle)))))) +
+  geom_bar() +
+  scale_y_log10() +
+  labs(x = "aisles", 
+       y = "log10(total number of items)", 
+       title = "number of items ordered in each aisle") +
+  coord_flip()
+ 
+```
+3.
+```{r}
+instacart %>% 
+  filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>% 
+  group_by(aisle, product_name) %>% 
+  summarise(item_num = n()) %>% 
+  group_by(aisle) %>% 
+  mutate(item_rank = min_rank(desc(item_num))) %>% 
+  filter(item_rank == 1) %>% 
+  knitr::kable(digits = 1)
+```
+```{r}
+instacart %>% 
+  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>% 
+  select(product_name, order_dow, order_hour_of_day) %>% 
+  group_by(product_name, order_dow) %>% 
+  summarise(mean_hour = mean(order_hour_of_day)) %>% 
+  spread(key = order_dow, value = mean_hour) %>% 
+  rename(Sunday = "0", Monday = "1", Tuesday = "2", Wednesday = "3", Thursday = "4", Friday = "5", Saturday = "6") %>% 
+  knitr::kable(digit = 1)
+```
+
+
+
+
