@@ -18,6 +18,7 @@ library(p8105.datasets)
 library(tidyverse)
 library(patchwork)
 library(ggridges)
+knitr::opts_chunk$set(echo=TRUE,warning = FALSE,fig.width = 8,fig.height = 6,out.width = "90%")
 data("instacart")
 ```
 ### Short Description
@@ -27,30 +28,32 @@ there are `r dim(instacart)[2]` variables and `r dim(instacart)[1]` observations
 1.There are `r dim(distinct(instacart, aisle))[1]` aisles in the store. And among them, "`r (instacart %>% group_by(aisle) %>% summarise(item_sum = n()) %>% arrange(desc(item_sum)))[1,1]`" ordered the most.
 
 2.
-```{r, fig.height=60,fig.width=10}
+```{r}
 instacart %>% 
-  select(aisle) %>% 
-  filter(aisle>10000)%>%
-  ggplot(aes(x = factor(aisle,levels=names(sort(table(aisle)))))) +
-  geom_bar() +
+  group_by(aisle) %>%
+  summarize(n_obs = n())%>%
+  filter(n_obs>10000)%>%
+  ggplot(aes(x = aisle,y=n_obs)) +
+  geom_bar(stat='identity') +
   scale_y_log10() +
   labs(x = "aisles", 
-       y = "log10(total number of items)", 
-       title = "number of items ordered in each aisle") +
+       y = "log10 of total number of items", 
+       title = "Item ordered by aisle") +
   coord_flip()
- 
 ```
 3.
 ```{r}
 instacart %>% 
   filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>% 
   group_by(aisle, product_name) %>% 
-  summarise(item_num = n()) %>% 
+  summarise(item_sum = n()) %>% 
   group_by(aisle) %>% 
-  mutate(item_rank = min_rank(desc(item_num))) %>% 
+  mutate(item_rank = min_rank(desc(item_sum))) %>% 
   filter(item_rank == 1) %>% 
   knitr::kable(digits = 1)
 ```
+
+4.
 ```{r}
 instacart %>% 
   filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>% 
@@ -73,8 +76,9 @@ brfss =
   brfss_smart2010 %>%
   janitor::clean_names() %>% 
   filter(topic == "Overall Health") %>% 
-  filter(response %in% c("Poor", "Fair", "Good", "Very good", "Excellent")) %>% 
-  arrange(response)
+  filter(response %in% c("Poor", "Fair", "Good", "Very good", "Excellent"))%>%
+  mutate(response=as_factor(response))%>%
+  arrange(desc(response))
 ```
 Answers to question 2 
 
@@ -89,8 +93,8 @@ brfss %>%
   ggplot(aes(x = year, y = mean_value, group = locationabbr, color = locationabbr)) +
   geom_line() +
   labs(
-    y = "average observatons",
-    title = " average observations in each state from 2002 to 2010"
+    y = "mean observatons",
+    title = " mean observations by state"
   ) 
 ```
 
@@ -98,9 +102,39 @@ brfss %>%
 
 ```{r}
 brfss %>%
-  filter(year %in% c(2006, 2010) & locationabbr == "NY") %>%
-  group_by(year,response) %>%
-  ggplot(aes(x = year, y = data_value, group = response, color = response)) +
-  geom_line()
+  filter(year %in% c("2006","2010"), locationabbr == "NY") %>%
+  ggplot(aes(x=response,y=data_value,color=response))+
+  geom_boxplot()+
+  facet_grid(.~year)
 ```
+### Question 3
+1.
+```{r}
+accel=read_csv("accel_data.csv")%>%
+  janitor::clean_names()%>%
+  pivot_longer(activity_1:activity_1440,names_to = "activitiy_day",values_to = "activity_counts")%>%
+  mutate(daytype=ifelse(day=="Sunday"|day=="Saturday","weekend","weekday"))%>%
+  mutate(activity_counts=as.integer(activity_counts))
+```
+there are `r dim(accel)[2]` variables and `r dim(accel)[1]` observations in this dataset. It contains details including `week`: week identifier, `day id`: date identifier, `daytype`: identify if it is weekday(Monday to Friday) or weekend (Saturday to Sunday). The original activity is pivot into `activity_counts`and `activity_day` .
 
+2.
+```{r}
+accel%>%
+group_by(day)%>%
+summarize(total=sum(activity_counts))%>%
+knitr::kable(digits = 1)
+```
+The activity in Wednesday and Friday is significantly higher than the activity counts in Saturday.
+
+```{r}
+accel%>%
+  ggplot(aes(x=activitiy_day,y=activity_counts,color=day))+
+  geom_point(alpha=.2)+
+  geom_smooth(aes(group=day))+
+  labs(
+    title="24 hour activity accrose each day",
+    x="Hour",
+    y="Activity")
+```
+In this conclude that the activity on Friday morning is the highest while the activity on Sunday afternoon is the second highest. The activity around noon is the lowest accrose the day.
